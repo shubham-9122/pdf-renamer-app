@@ -1,26 +1,36 @@
 {
   "expo": {
-    "name": "pdf-renamer-app",
-    "slug": "pdf-renamer-app",
+    "name": "PDF Renamer",
+    "slug": "pdf-renamer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "ios": {
-      "supportsTablet": true
-    },
+    "platforms": ["android"],
     "android": {
+      "package": "com.renamepro.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
+      },
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "MANAGE_EXTERNAL_STORAGE"
+      ]
     },
     "plugins": [
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow PDF Renamer to save files.",
+          "savePhotosPermission": "Allow PDF Renamer to save files.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      "expo-document-picker",
       "expo-sharing"
     ]
   }
