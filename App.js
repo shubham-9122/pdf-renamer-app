@@ -16,6 +16,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import { toByteArray } from 'base64-js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -48,8 +49,10 @@ async function readPdfText(fileUri) {
     const b64 = await FileSystem.readAsStringAsync(fileUri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    // Decode base64 to a binary string and search for the vehicle number pattern
-    const binary = atob(b64);
+    // Decode base64 to a latin-1 string using base64-js (Hermes-compatible)
+    const bytes = toByteArray(b64);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
     return binary;
   } catch {
     return '';
