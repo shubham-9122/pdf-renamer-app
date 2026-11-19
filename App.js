@@ -18,6 +18,9 @@ import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { toByteArray } from 'base64-js';
 
+// SAF = Storage Access Framework (Android 10+ direct-to-Downloads save)
+const SAF = FileSystem.StorageAccessFramework;
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function getOrdinalSuffix(day) {
@@ -151,23 +154,52 @@ export default function App() {
   }
 
   async function saveFile(item) {
-    if (!item.newName.trim()) {
+    const name = item.newName.trim();
+    if (!name) {
       Alert.alert('Empty filename', 'Please enter a filename before saving.');
       return;
     }
-    try {
-      const destUri = FileSystem.cacheDirectory + item.newName.trim();
-      await FileSystem.copyAsync({ from: item.uri, to: destUri });
 
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(destUri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Save renamed PDF',
-          UTI: 'com.adobe.pdf',
-        });
-      } else {
-        Alert.alert('Saved', `File copied as ${item.newName}`);
+    try {
+      // Step 1: copy the picked file to a stable cache path with the new name
+      const cachedUri = FileSystem.cacheDirectory + name;
+      await FileSystem.copyAsync({ from: item.uri, to: cachedUri });
+
+      // Step 2: try SAF direct-to-Downloads (Android 10+)
+      let savedToDownloads = false;
+      try {
+        const permissions = await SAF.requestDirectoryPermissionsAsync();
+        if (permissions.granted) {
+          const fileUri = await SAF.createFileAsync(
+            permissions.directoryUri,
+            name,
+            'application/pdf'
+          );
+          const b64 = await FileSystem.readAsStringAsync(cachedUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          await SAF.writeAsStringAsync(fileUri, b64, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          savedToDownloads = true;
+          Alert.alert('✅ Saved', `"${name}" saved to the folder you chose.`);
+        }
+      } catch (safErr) {
+        // SAF failed or cancelled — fall through to share sheet
+      }
+
+      // Step 3: if SAF didn't save, use share sheet so user can pick Save to Files / Downloads
+      if (!savedToDownloads) {
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(cachedUri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Save renamed PDF',
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          Alert.alert('Saved to cache', `File saved as "${name}" in app cache.`);
+        }
       }
     } catch (err) {
       Alert.alert('Save failed', String(err));
